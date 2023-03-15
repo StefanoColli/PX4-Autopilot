@@ -272,6 +272,10 @@ void FlightModeManager::start_flight_task()
 			error = switchTask(FlightTaskIndex::ManualPositionSmoothVel);
 			break;
 
+		case 5:
+			error = switchTask(FlightTaskIndex::Helical);
+			break;
+
 		case 4:
 		default:
 			if (_param_mpc_pos_mode.get() != 4) {

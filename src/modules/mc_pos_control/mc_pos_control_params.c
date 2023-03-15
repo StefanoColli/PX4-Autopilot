@@ -771,14 +771,16 @@ PARAM_DEFINE_FLOAT(MPC_TKO_RAMP_T, 3.0f);
  *   without smoothing. Useful for velocity control tuning.
  * 3 Smooth position control with maximum acceleration and jerk limits based on
  *   jerk optimized trajectory generator (different algorithm than 1).
- * 4 Smooth position control where sticks map to acceleration and there's a virtual brake drag
+ * 4 Smooth position control where sticks map to acceleration and there's a virtual brake drag.
+ * 5 Helical trajectory ascending
  *
  * @value 0 Simple position control
  * @value 3 Smooth position control (Jerk optimized)
  * @value 4 Acceleration based input
+ * @value 5 Helical ascending trajectory
  * @group Multicopter Position Control
  */
-PARAM_DEFINE_INT32(MPC_POS_MODE, 4);
+PARAM_DEFINE_INT32(MPC_POS_MODE, 5);
 
 /**
  * Enforced delay between arming and takeoff
