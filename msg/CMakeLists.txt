@@ -92,6 +92,7 @@ set(msg_files
 	gps_dump.msg
 	gps_inject_data.msg
 	heater_status.msg
+	helical_trajectory.msg
 	home_position.msg
 	hover_thrust_estimate.msg
 	internal_combustion_engine_status.msg
