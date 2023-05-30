@@ -47,4 +47,5 @@ px4_add_module(
 		controllib
 		geo
 		SlewRate
+		polimi_control
 	)

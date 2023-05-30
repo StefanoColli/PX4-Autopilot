@@ -45,9 +45,21 @@ bool FlightTaskHelical::update()
 		_time_stamp_start_helix == 0)
 	{
 		//we still are too far from the starting position, or too fast
-		_position_setpoint = _starting_pos;
+		//_position_setpoint = _starting_pos;
 
-		//PX4_INFO("Approaching starting position");
+		matrix::Vector3f h = _starting_pos - _helix_origin;
+		float tau = (_time_stamp_current - _time_stamp_activate) / (1e6f * _approach_duration);
+		if (tau <= 1.0f)
+		{
+			float sigma = 3*pow(tau,2) - 2*pow(tau,3);
+			_position_setpoint = _helix_origin + h * sigma;
+		}
+		else
+		{
+			_position_setpoint = _starting_pos;
+		}
+
+		PX4_INFO("Approaching starting position");
 		msg.started = false;
 		msg.ended = false;
 	}
@@ -55,7 +67,7 @@ bool FlightTaskHelical::update()
 	{
 		//we are in the neighborhood of the starting position
 
-		_velocity_setpoint.setNaN();
+		_velocity_setpoint.setNaN(); //TODO remove?
 
 		//set the timestamp at which the actual trajectory starts
 		if (_time_stamp_start_helix == 0)
@@ -63,8 +75,8 @@ bool FlightTaskHelical::update()
 			_time_stamp_start_helix = hrt_absolute_time();
 		}
 
-		//compute time (in seconds) elapsed from the starting of the trajectory
-		float trajectory_time = (_time_stamp_current - _time_stamp_start_helix) / 1e6f; //timestamps are in ms
+		//time (in seconds) elapsed from the starting of the trajectory
+		float trajectory_time = (_time_stamp_current - _time_stamp_start_helix) / 1e6f; //timestamps are in us
 
 		//helical trajectory
 		if (trajectory_time <= _trajectory_duration)
@@ -73,7 +85,7 @@ bool FlightTaskHelical::update()
 			_position_setpoint(1) = _helix_origin(1) + _helix_radius * sinf(trajectory_time*_trajectory_speed);
 			_position_setpoint(2) = _helix_origin(2) - _vertical_separation * trajectory_time*_trajectory_speed; //NED frame
 
-			//PX4_INFO("Following helical trajectory");
+			PX4_INFO("Following helical trajectory");
 			msg.started = true;
 			msg.ended = false;
 		}
@@ -83,7 +95,7 @@ bool FlightTaskHelical::update()
 			//_position_setpoint = _position;
 
 
-			//PX4_INFO("Helical trajectory terminated");
+			PX4_INFO("Helical trajectory terminated");
 			msg.started = true;
 			msg.ended = true;
 		}

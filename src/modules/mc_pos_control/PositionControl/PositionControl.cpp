@@ -44,11 +44,24 @@
 
 using namespace matrix;
 
+void PositionControl::setPositionGains(const matrix::Vector3f &P)
+{
+	_pos_x_controller.updatePIDParameters(P(0), NAN, NAN, NAN, NAN, NAN, NAN, NAN);
+	_pos_y_controller.updatePIDParameters(P(1), NAN, NAN, NAN, NAN, NAN, NAN, NAN);
+	_pos_z_controller.updatePIDParameters(P(2), NAN, NAN, NAN, NAN, NAN, NAN, NAN);
+}
+
 void PositionControl::setVelocityGains(const Vector3f &P, const Vector3f &I, const Vector3f &D)
 {
+
 	_gain_vel_p = P;
 	_gain_vel_i = I;
 	_gain_vel_d = D;
+
+	//NEW _vel_x_controller.updatePIDParameters(P(0), P(0)/I(0), D(0)/P(0), NAN, NAN, NAN, NAN, NAN);
+	//NEW _vel_y_controller.updatePIDParameters(P(1), P(1)/I(1), D(1)/P(1), NAN, NAN, NAN, NAN, NAN);
+	//NEW _vel_z_controller.updatePIDParameters(P(2), P(2)/I(2), D(2)/P(2), NAN, NAN, NAN, NAN, NAN);
+
 }
 
 void PositionControl::setVelocityLimits(const float vel_horizontal, const float vel_up, const float vel_down)
@@ -107,7 +120,7 @@ bool PositionControl::update(const float dt)
 	bool valid = _inputValid();
 
 	if (valid) {
-		_positionControl();
+		_positionControl(dt);
 		_velocityControl(dt);
 
 		_yawspeed_sp = PX4_ISFINITE(_yawspeed_sp) ? _yawspeed_sp : 0.f;
@@ -121,10 +134,46 @@ bool PositionControl::update(const float dt)
 	return valid;
 }
 
-void PositionControl::_positionControl()
+void PositionControl::_positionControl(const float dt)
 {
 	// P-position controller
-	Vector3f vel_sp_position = (_pos_sp - _pos).emult(_gain_pos_p);
+
+	float u_x, u_y, u_z;
+	if (PX4_ISFINITE(_pos_sp(0)) && PX4_ISFINITE(_pos(0)))
+	{
+		_pos_x_controller.evaluate(_pos(0), _pos_sp(0), dt, 0.0, u_x);
+	}
+	else
+	{
+		u_x = NAN;
+	}
+
+	if (PX4_ISFINITE(_pos_sp(1)) && PX4_ISFINITE(_pos(1)))
+	{
+		_pos_y_controller.evaluate(_pos(1), _pos_sp(1), dt, 0.0, u_y);
+	}
+	else
+	{
+		u_y = NAN;
+	}
+
+	if (PX4_ISFINITE(_pos_sp(2)) && PX4_ISFINITE(_pos(2)))
+	{
+		_pos_z_controller.evaluate(_pos(2), _pos_sp(2), dt, 0.0, u_z);
+	}
+	else
+	{
+		u_z = NAN;
+	}
+
+
+
+	//PX4_INFO("spx = %f, spy = %f, spz = %f", (double)_pos_sp(0),(double)_pos_sp(1),(double)_pos_sp(2));
+	//PX4_INFO("px = %f, py = %f, pz = %f", (double)_pos(0),(double)_pos(1),(double)_pos(2));
+	//PX4_INFO("ux = %f, uy = %f, uz = %f", (double)u_x,(double)u_y,(double)u_z);
+
+	Vector3f vel_sp_position = Vector3f(u_x, u_y, u_z);
+
 	// Position and feed-forward velocity setpoints or position states being NAN results in them not having an influence
 	ControlMath::addIfNotNanVector3f(_vel_sp, vel_sp_position);
 	// make sure there are no NAN elements for further reference while constraining

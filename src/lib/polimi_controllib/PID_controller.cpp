@@ -1,4 +1,5 @@
 #include "PID_controller.h"
+#include <px4_platform_common/log.h>
 
 PID_controller::PID_controller(float Kc, float Ti, float Td, float N, float b, float c, float uMin, float uMax) {
 
@@ -6,7 +7,7 @@ PID_controller::PID_controller(float Kc, float Ti, float Td, float N, float b, f
     if ((Kc <= FLT_EPSILON) && (Ti <= FLT_EPSILON) && (Td <= FLT_EPSILON))
         PX4_ERR("PID parameters cannot be all zero");
     if (uMin > uMax)
-        PX4_ERR("Lower control saturation cannot be greater then higher");
+        PX4_ERR("Lower control saturation cannot be greater than higher");
 
     // Initialise PID parameters
     this->_Kc = Kc;
@@ -30,6 +31,19 @@ PID_controller::PID_controller(float Kc, float Ti, float Td, float N, float b, f
 
 PID_controller::~PID_controller() {
     // Do nothing
+}
+
+void PID_controller::updatePIDParameters(float Kc, float Ti, float Td, float N, float b, float c, float uMin, float uMax)
+{
+    this->_Kc = PX4_ISFINITE(Kc) ? Kc : this->_Kc;
+    this->_Ti = PX4_ISFINITE(Ti) ? Ti : this->_Ti;
+    this->_Td = PX4_ISFINITE(Td) ? Td : this->_Td;
+    this->_N = PX4_ISFINITE(N) ? N : this->_N;
+    this->_b = PX4_ISFINITE(b) ? b : this->_b;
+    this->_c = PX4_ISFINITE(c) ? c : this->_c;
+    this->_uMin = PX4_ISFINITE(uMin) ? uMin : this->_uMin;
+    this->_uMax = PX4_ISFINITE(uMax) ? uMax : this->_uMax;
+    PX4_INFO("PID parameters updated");
 }
 
 void PID_controller::evaluate(float y, float ysp, float delta_T, float trk, float &u) {
@@ -121,4 +135,14 @@ void PID_controller::evaluate(float y, float ysp, float delta_T, float trk, floa
 void PID_controller::resetState() {
     // Reset PID state
     _y_old = _ysp_old = _u_old = _uI = _uD = 0.0;
+}
+
+void PID_controller::setControllerState(PID_state controller_state)
+{
+    if(controller_state == PID_state::TRACKING && _Ti <= FLT_EPSILON && _Td <= FLT_EPSILON)
+    {
+        PX4_WARN("Setting a P controller in tracking mode may have unwanted results");
+        PX4_WARN("simply don't run it when it should be in tracking mode");
+    }
+    this->_controller_state = controller_state;
 }

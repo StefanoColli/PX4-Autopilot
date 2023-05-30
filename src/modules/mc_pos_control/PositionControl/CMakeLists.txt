@@ -40,4 +40,4 @@ px4_add_library(PositionControl
 target_include_directories(PositionControl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 px4_add_unit_gtest(SRC ControlMathTest.cpp LINKLIBS PositionControl)
-px4_add_unit_gtest(SRC PositionControlTest.cpp LINKLIBS PositionControl)
+px4_add_functional_gtest(SRC PositionControlTest.cpp LINKLIBS PositionControl polimi_control)

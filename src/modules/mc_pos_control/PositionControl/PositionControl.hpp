@@ -43,6 +43,7 @@
 #include <matrix/matrix/math.hpp>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <lib/polimi_controllib/PID_controller.h>
 
 struct PositionControlStates {
 	matrix::Vector3f position;
@@ -82,7 +83,7 @@ public:
 	 * Set the position control gains
 	 * @param P 3D vector of proportional gains for x,y,z axis
 	 */
-	void setPositionGains(const matrix::Vector3f &P) { _gain_pos_p = P; }
+	void setPositionGains(const matrix::Vector3f &P);
 
 	/**
 	 * Set the velocity control gains
@@ -181,7 +182,7 @@ public:
 private:
 	bool _inputValid();
 
-	void _positionControl(); ///< Position proportional control
+	void _positionControl(const float dt); ///< Position proportional control
 	void _velocityControl(const float dt); ///< Velocity PID control
 	void _accelerationControl(); ///< Acceleration setpoint processing
 
@@ -201,6 +202,15 @@ private:
 	float _lim_tilt{}; ///< Maximum tilt from level the output attitude is allowed to have
 
 	float _hover_thrust{}; ///< Thrust [0.1, 0.9] with which the vehicle hovers not accelerating down or up with level orientation
+
+	// Controllers
+	PID_controller _pos_x_controller = PID_controller::P_academic(0.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _pos_y_controller = PID_controller::P_academic(0.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _pos_z_controller = PID_controller::P_academic(0.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _vel_x_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 5.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _vel_y_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 5.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _vel_z_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 5.0f, -FLT_MAX, FLT_MAX);
+
 
 	// States
 	matrix::Vector3f _pos; /**< current position */

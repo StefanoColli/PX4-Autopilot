@@ -21,7 +21,7 @@
 // - when the inner controller is set to TRACKING the outer controller should be set to TRACKING as well
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "px4_log.h"
+
 #include "float.h"
 
 class PID_controller {
@@ -60,7 +60,7 @@ public:
     //Proportional derivative controller in academic form (PD -> Ti = 0, b = c = 1)
     static inline PID_controller PD_academic(float Kc, float Td, float N, float uMin, float uMax)
                     {return PID_controller(Kc, 0.0f, Td, N, 1.0f, 1.0f, uMin, uMax); }
-    //PID controller in academic form (b = c =1)
+    //PID controller in academic form (b = c = 1)
     static inline PID_controller PID_academic(float Kc, float Ti, float Td, float N, float uMin, float uMax)
                     {return PID_controller(Kc, Ti, Td, N, 1.0f, 1.0f, uMin, uMax); }
 
@@ -73,7 +73,7 @@ public:
     //Proportional derivative controller in parallel form (PD -> Ki = 0, b = c = 1)
     static inline PID_controller PD_parallel(float Kp, float Kd, float N, float uMin, float uMax)
                     {return PID_controller(Kp, 0.0f, Kd/Kp, N, 1.0f, 1.0f, uMin, uMax); }
-    //PID controller in parallel form (b = c =1)
+    //PID controller in parallel form (b = c = 1)
     static inline PID_controller PID_parallel(float Kp, float Ki, float Kd, float N, float uMin, float uMax)
                     {return PID_controller(Kp, Kp/Ki, Kd/Kp, N, 1.0f, 1.0f, uMin, uMax); }
 
@@ -97,7 +97,21 @@ public:
 
     PID_state getControllerState() { return _controller_state; }
 
-    void setControllerState(PID_state controller_state) { this->_controller_state = controller_state; }
+    void setControllerState(PID_state controller_state);
+
+    /**
+     * @brief Update Controller parameters, use NAN to leave the corresponding parameter as it is
+     *
+     * @param Kc
+     * @param Ti
+     * @param Td
+     * @param N
+     * @param b
+     * @param c
+     * @param uMin
+     * @param uMax
+     */
+    void updatePIDParameters(float Kc, float Ti, float Td, float N, float b, float c, float uMin, float uMax);
 
     actuator_state getActuationState() { return _actuation_state; }
 

@@ -26,5 +26,6 @@ private:
 	static constexpr float _tolerance_vel = 0.1f; //tolerance velocity for starting the helical trajectory
 	hrt_abstime _time_stamp_start_helix = 0; //timestamp at which the actual helical trajectory started (not the flight task)
 	float _trajectory_duration; //estimated time duration of the helical trajectory
+	float _approach_duration = 4.0f; //time to approach the starting position of the helix
 	uORB::Publication<helical_trajectory_s> _helical_trajectory_publisher{ORB_ID(helical_trajectory)}; //handle to publish trajectory status
 };

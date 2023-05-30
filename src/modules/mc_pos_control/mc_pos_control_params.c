@@ -780,7 +780,7 @@ PARAM_DEFINE_FLOAT(MPC_TKO_RAMP_T, 3.0f);
  * @value 5 Helical ascending trajectory
  * @group Multicopter Position Control
  */
-PARAM_DEFINE_INT32(MPC_POS_MODE, 5);
+PARAM_DEFINE_INT32(MPC_POS_MODE, 4);
 
 /**
  * Enforced delay between arming and takeoff
