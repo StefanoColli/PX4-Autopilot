@@ -43,7 +43,7 @@ void PID_controller::updatePIDParameters(float Kc, float Ti, float Td, float N, 
     this->_c = PX4_ISFINITE(c) ? c : this->_c;
     this->_uMin = PX4_ISFINITE(uMin) ? uMin : this->_uMin;
     this->_uMax = PX4_ISFINITE(uMax) ? uMax : this->_uMax;
-    PX4_INFO("PID parameters updated");
+    //PX4_INFO("PID parameters updated");
 }
 
 void PID_controller::evaluate(float y, float ysp, float delta_T, float trk, float &u) {

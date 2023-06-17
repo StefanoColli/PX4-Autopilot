@@ -53,15 +53,9 @@ void PositionControl::setPositionGains(const matrix::Vector3f &P)
 
 void PositionControl::setVelocityGains(const Vector3f &P, const Vector3f &I, const Vector3f &D)
 {
-
-	_gain_vel_p = P;
-	_gain_vel_i = I;
-	_gain_vel_d = D;
-
-	//NEW _vel_x_controller.updatePIDParameters(P(0), P(0)/I(0), D(0)/P(0), NAN, NAN, NAN, NAN, NAN);
-	//NEW _vel_y_controller.updatePIDParameters(P(1), P(1)/I(1), D(1)/P(1), NAN, NAN, NAN, NAN, NAN);
-	//NEW _vel_z_controller.updatePIDParameters(P(2), P(2)/I(2), D(2)/P(2), NAN, NAN, NAN, NAN, NAN);
-
+	_vel_x_controller.updatePIDParameters(P(0), P(0)/I(0), D(0)/P(0), NAN, NAN, NAN, NAN, NAN);
+	_vel_y_controller.updatePIDParameters(P(1), P(1)/I(1), D(1)/P(1), NAN, NAN, NAN, NAN, NAN);
+	_vel_z_controller.updatePIDParameters(P(2), P(2)/I(2), D(2)/P(2), NAN, NAN, NAN, NAN, NAN);
 }
 
 void PositionControl::setVelocityLimits(const float vel_horizontal, const float vel_up, const float vel_down)
@@ -76,6 +70,9 @@ void PositionControl::setThrustLimits(const float min, const float max)
 	// make sure there's always enough thrust vector length to infer the attitude
 	_lim_thr_min = math::max(min, 10e-4f);
 	_lim_thr_max = max;
+
+	//TODO set controllers uMin and uMax
+	//_vel_z_controller.updatePIDParameters(NAN, NAN, NAN, NAN, NAN, NAN, -_lim_thr_max, -_lim_thr_min);
 }
 
 void PositionControl::setHorizontalThrustMargin(const float margin)
@@ -166,8 +163,6 @@ void PositionControl::_positionControl(const float dt)
 		u_z = NAN;
 	}
 
-
-
 	//PX4_INFO("spx = %f, spy = %f, spz = %f", (double)_pos_sp(0),(double)_pos_sp(1),(double)_pos_sp(2));
 	//PX4_INFO("px = %f, py = %f, pz = %f", (double)_pos(0),(double)_pos(1),(double)_pos(2));
 	//PX4_INFO("ux = %f, uy = %f, uz = %f", (double)u_x,(double)u_y,(double)u_z);
@@ -189,19 +184,42 @@ void PositionControl::_positionControl(const float dt)
 void PositionControl::_velocityControl(const float dt)
 {
 	// PID velocity control
-	Vector3f vel_error = _vel_sp - _vel;
-	Vector3f acc_sp_velocity = vel_error.emult(_gain_vel_p) + _vel_int - _vel_dot.emult(_gain_vel_d);
+
+	float u_x, u_y, u_z;
+	if (PX4_ISFINITE(_vel_sp(0)) && PX4_ISFINITE(_vel(0)))
+	{
+		_vel_x_controller.evaluate(_vel(0), _vel_sp(0), dt, 0.0, u_x);
+	}
+	else
+	{
+		u_x = NAN;
+	}
+
+	if (PX4_ISFINITE(_vel_sp(1)) && PX4_ISFINITE(_vel(1)))
+	{
+		_vel_y_controller.evaluate(_vel(1), _vel_sp(1), dt, 0.0, u_y);
+	}
+	else
+	{
+		u_y = NAN;
+	}
+
+	if (PX4_ISFINITE(_vel_sp(2)) && PX4_ISFINITE(_vel(2)))
+	{
+		_vel_z_controller.evaluate(_vel(2), _vel_sp(2), dt, 0.0, u_z);
+	}
+	else
+	{
+		u_z = NAN;
+	}
+
+	Vector3f acc_sp_velocity = Vector3f(u_x, u_y, u_z);
 
 	// No control input from setpoints or corresponding states which are NAN
 	ControlMath::addIfNotNanVector3f(_acc_sp, acc_sp_velocity);
 
+	/* Acceleration control */
 	_accelerationControl();
-
-	// Integrator anti-windup in vertical direction
-	if ((_thr_sp(2) >= -_lim_thr_min && vel_error(2) >= 0.0f) ||
-	    (_thr_sp(2) <= -_lim_thr_max && vel_error(2) <= 0.0f)) {
-		vel_error(2) = 0.f;
-	}
 
 	// Prioritize vertical control while keeping a horizontal margin
 	const Vector2f thrust_sp_xy(_thr_sp);
@@ -227,20 +245,6 @@ void PositionControl::_velocityControl(const float dt)
 	if (thrust_sp_xy_norm > thrust_max_xy) {
 		_thr_sp.xy() = thrust_sp_xy / thrust_sp_xy_norm * thrust_max_xy;
 	}
-
-	// Use tracking Anti-Windup for horizontal direction: during saturation, the integrator is used to unsaturate the output
-	// see Anti-Reset Windup for PID controllers, L.Rundqwist, 1990
-	const Vector2f acc_sp_xy_limited = Vector2f(_thr_sp) * (CONSTANTS_ONE_G / _hover_thrust);
-	const float arw_gain = 2.f / _gain_vel_p(0);
-	vel_error.xy() = Vector2f(vel_error) - (arw_gain * (Vector2f(_acc_sp) - acc_sp_xy_limited));
-
-	// Make sure integral doesn't get NAN
-	ControlMath::setZeroIfNanVector3f(vel_error);
-	// Update integral part of velocity control
-	_vel_int += vel_error.emult(_gain_vel_i) * dt;
-
-	// limit thrust integral
-	_vel_int(2) = math::min(fabsf(_vel_int(2)), CONSTANTS_ONE_G) * sign(_vel_int(2));
 }
 
 void PositionControl::_accelerationControl()

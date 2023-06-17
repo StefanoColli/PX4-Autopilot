@@ -186,12 +186,6 @@ private:
 	void _velocityControl(const float dt); ///< Velocity PID control
 	void _accelerationControl(); ///< Acceleration setpoint processing
 
-	// Gains
-	matrix::Vector3f _gain_pos_p; ///< Position control proportional gain
-	matrix::Vector3f _gain_vel_p; ///< Velocity control proportional gain
-	matrix::Vector3f _gain_vel_i; ///< Velocity control integral gain
-	matrix::Vector3f _gain_vel_d; ///< Velocity control derivative gain
-
 	// Limits
 	float _lim_vel_horizontal{}; ///< Horizontal velocity limit with feed forward and position control
 	float _lim_vel_up{}; ///< Upwards velocity limit with feed forward and position control
