@@ -63,6 +63,10 @@ void PositionControl::setVelocityLimits(const float vel_horizontal, const float 
 	_lim_vel_horizontal = vel_horizontal;
 	_lim_vel_up = vel_up;
 	_lim_vel_down = vel_down;
+
+	_pos_x_controller.updatePIDParameters(NAN, NAN, NAN, NAN, NAN, NAN, -_lim_vel_horizontal/2, _lim_vel_horizontal/2);
+	_pos_y_controller.updatePIDParameters(NAN, NAN, NAN, NAN, NAN, NAN, -_lim_vel_horizontal/2, _lim_vel_horizontal/2);
+	_pos_z_controller.updatePIDParameters(NAN, NAN, NAN, NAN, NAN, NAN, -_lim_vel_up, _lim_vel_down);
 }
 
 void PositionControl::setThrustLimits(const float min, const float max)
@@ -163,10 +167,6 @@ void PositionControl::_positionControl(const float dt)
 		u_z = NAN;
 	}
 
-	//PX4_INFO("spx = %f, spy = %f, spz = %f", (double)_pos_sp(0),(double)_pos_sp(1),(double)_pos_sp(2));
-	//PX4_INFO("px = %f, py = %f, pz = %f", (double)_pos(0),(double)_pos(1),(double)_pos(2));
-	//PX4_INFO("ux = %f, uy = %f, uz = %f", (double)u_x,(double)u_y,(double)u_z);
-
 	Vector3f vel_sp_position = Vector3f(u_x, u_y, u_z);
 
 	// Position and feed-forward velocity setpoints or position states being NAN results in them not having an influence
@@ -176,9 +176,9 @@ void PositionControl::_positionControl(const float dt)
 
 	// Constrain horizontal velocity by prioritizing the velocity component along the
 	// the desired position setpoint over the feed-forward term.
-	_vel_sp.xy() = ControlMath::constrainXY(vel_sp_position.xy(), (_vel_sp - vel_sp_position).xy(), _lim_vel_horizontal);
+	//_vel_sp.xy() = ControlMath::constrainXY(vel_sp_position.xy(), (_vel_sp - vel_sp_position).xy(), _lim_vel_horizontal);
 	// Constrain velocity in z-direction.
-	_vel_sp(2) = math::constrain(_vel_sp(2), -_lim_vel_up, _lim_vel_down);
+	//_vel_sp(2) = math::constrain(_vel_sp(2), -_lim_vel_up, _lim_vel_down);
 }
 
 void PositionControl::_velocityControl(const float dt)
@@ -215,11 +215,23 @@ void PositionControl::_velocityControl(const float dt)
 
 	Vector3f acc_sp_velocity = Vector3f(u_x, u_y, u_z);
 
+	// feedforward term
 	// No control input from setpoints or corresponding states which are NAN
 	ControlMath::addIfNotNanVector3f(_acc_sp, acc_sp_velocity);
 
 	/* Acceleration control */
 	_accelerationControl();
+
+	PX4_WARN("acc setpoint = %f %f %f", (double) u_x, (double) u_y, (double) u_z );
+
+	//PX4_WARN("Thrust setpoint = %f", (double) _thr_sp(2));
+	/*
+	// Integrator anti-windup in vertical direction
+	if ((_thr_sp(2) >= -_lim_thr_min && vel_error(2) >= 0.0f) ||
+	    (_thr_sp(2) <= -_lim_thr_max && vel_error(2) <= 0.0f)) {
+		vel_error(2) = 0.f;
+	}
+	*/
 
 	// Prioritize vertical control while keeping a horizontal margin
 	const Vector2f thrust_sp_xy(_thr_sp);
@@ -245,6 +257,22 @@ void PositionControl::_velocityControl(const float dt)
 	if (thrust_sp_xy_norm > thrust_max_xy) {
 		_thr_sp.xy() = thrust_sp_xy / thrust_sp_xy_norm * thrust_max_xy;
 	}
+
+	/*
+	// Use tracking Anti-Windup for horizontal direction: during saturation, the integrator is used to unsaturate the output
+	// see Anti-Reset Windup for PID controllers, L.Rundqwist, 1990
+	const Vector2f acc_sp_xy_limited = Vector2f(_thr_sp) * (CONSTANTS_ONE_G / _hover_thrust);
+	const float arw_gain = 2.f / _gain_vel_p(0);
+	vel_error.xy() = Vector2f(vel_error) - (arw_gain * (Vector2f(_acc_sp) - acc_sp_xy_limited));
+
+	// Make sure integral doesn't get NAN
+	ControlMath::setZeroIfNanVector3f(vel_error);
+	// Update integral part of velocity control
+	_vel_int += vel_error.emult(_gain_vel_i) * dt;
+
+	// limit thrust integral
+	_vel_int(2) = math::min(fabsf(_vel_int(2)), CONSTANTS_ONE_G) * sign(_vel_int(2));
+	*/
 }
 
 void PositionControl::_accelerationControl()

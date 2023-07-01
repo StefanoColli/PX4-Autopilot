@@ -42,9 +42,9 @@ using namespace matrix;
 
 void RateControl::setGains(const Vector3f &P, const Vector3f &I, const Vector3f &D)
 {
-	_gain_p = P;
-	_gain_i = I;
-	_gain_d = D;
+	_rate_x_controller.updatePIDParameters(P(0), P(0)/I(0), D(0)/P(0), NAN, NAN, NAN, -_lim_int(0), _lim_int(0));
+	_rate_y_controller.updatePIDParameters(P(1), P(1)/I(1), D(1)/P(1), NAN, NAN, NAN, -_lim_int(1), _lim_int(1));
+	_rate_z_controller.updatePIDParameters(P(2), P(2)/I(2), D(2)/P(2), NAN, NAN, NAN, -_lim_int(2), _lim_int(2));
 }
 
 void RateControl::setSaturationStatus(const Vector<bool, 3> &saturation_positive,
@@ -57,55 +57,48 @@ void RateControl::setSaturationStatus(const Vector<bool, 3> &saturation_positive
 Vector3f RateControl::update(const Vector3f &rate, const Vector3f &rate_sp, const Vector3f &angular_accel,
 			     const float dt, const bool landed)
 {
-	// angular rates error
-	Vector3f rate_error = rate_sp - rate;
+	// PID angular rate control
+	if (!landed)
+	{
+		float u_x, u_y, u_z;
+		if (PX4_ISFINITE(rate_sp(0)) && PX4_ISFINITE(rate(0)))
+		{
+			_rate_x_controller.evaluate(rate(0), rate_sp(0), dt, 0.0, u_x);
+		}
+		else
+		{
+			u_x = NAN;
+		}
 
-	// PID control with feed forward
-	const Vector3f torque = _gain_p.emult(rate_error) + _rate_int - _gain_d.emult(angular_accel) + _gain_ff.emult(rate_sp);
+		if (PX4_ISFINITE(rate_sp(1)) && PX4_ISFINITE(rate(1)))
+		{
+			_rate_y_controller.evaluate(rate(1), rate_sp(1), dt, 0.0, u_y);
+		}
+		else
+		{
+			u_y = NAN;
+		}
 
-	// update integral only if we are not landed
-	if (!landed) {
-		updateIntegral(rate_error, dt);
+		if (PX4_ISFINITE(rate_sp(2)) && PX4_ISFINITE(rate(2)))
+		{
+			_rate_z_controller.evaluate(rate(2), rate_sp(2), dt, 0.0, u_z);
+		}
+		else
+		{
+			u_z = NAN;
+		}
+
+		return Vector3f(u_x, u_y, u_z) + _gain_ff.emult(rate_sp);
 	}
-
-	return torque;
-}
-
-void RateControl::updateIntegral(Vector3f &rate_error, const float dt)
-{
-	for (int i = 0; i < 3; i++) {
-		// prevent further positive control saturation
-		if (_control_allocator_saturation_positive(i)) {
-			rate_error(i) = math::min(rate_error(i), 0.f);
-		}
-
-		// prevent further negative control saturation
-		if (_control_allocator_saturation_negative(i)) {
-			rate_error(i) = math::max(rate_error(i), 0.f);
-		}
-
-		// I term factor: reduce the I gain with increasing rate error.
-		// This counteracts a non-linear effect where the integral builds up quickly upon a large setpoint
-		// change (noticeable in a bounce-back effect after a flip).
-		// The formula leads to a gradual decrease w/o steps, while only affecting the cases where it should:
-		// with the parameter set to 400 degrees, up to 100 deg rate error, i_factor is almost 1 (having no effect),
-		// and up to 200 deg error leads to <25% reduction of I.
-		float i_factor = rate_error(i) / math::radians(400.f);
-		i_factor = math::max(0.0f, 1.f - i_factor * i_factor);
-
-		// Perform the integration using a first order method
-		float rate_i = _rate_int(i) + i_factor * _gain_i(i) * rate_error(i) * dt;
-
-		// do not propagate the result if out of range or invalid
-		if (PX4_ISFINITE(rate_i)) {
-			_rate_int(i) = math::constrain(rate_i, -_lim_int(i), _lim_int(i));
-		}
+	else
+	{
+		return Vector3f(0.0f, 0.0f, 0.0f);
 	}
 }
 
 void RateControl::getRateControlStatus(rate_ctrl_status_s &rate_ctrl_status)
 {
-	rate_ctrl_status.rollspeed_integ = _rate_int(0);
-	rate_ctrl_status.pitchspeed_integ = _rate_int(1);
-	rate_ctrl_status.yawspeed_integ = _rate_int(2);
+	rate_ctrl_status.rollspeed_integ = _rate_x_controller.getIntegral();
+	rate_ctrl_status.pitchspeed_integ = _rate_y_controller.getIntegral();
+	rate_ctrl_status.yawspeed_integ = _rate_z_controller.getIntegral();
 }

@@ -94,7 +94,6 @@ public:
 
     void resetState();
 
-
     PID_state getControllerState() { return _controller_state; }
 
     void setControllerState(PID_state controller_state);
@@ -119,6 +118,9 @@ public:
 
     void setControlSignalState(control_state controlSignal_state) { this->_controlSignal_state = controlSignal_state; }
 
+    float getIntegral() {return _uI; }
+
+    void resetIntegral() {_uI = 0; }
 protected:
     /* Class constructor (used by the named constructors)*/
     PID_controller(float Kc, float Ti, float Td, float N, float b, float c, float uMin, float uMax);

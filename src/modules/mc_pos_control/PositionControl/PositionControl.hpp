@@ -201,9 +201,9 @@ private:
 	PID_controller _pos_x_controller = PID_controller::P_academic(0.0f, -FLT_MAX, FLT_MAX);
 	PID_controller _pos_y_controller = PID_controller::P_academic(0.0f, -FLT_MAX, FLT_MAX);
 	PID_controller _pos_z_controller = PID_controller::P_academic(0.0f, -FLT_MAX, FLT_MAX);
-	PID_controller _vel_x_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 5.0f, -FLT_MAX, FLT_MAX);
-	PID_controller _vel_y_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 5.0f, -FLT_MAX, FLT_MAX);
-	PID_controller _vel_z_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 5.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _vel_x_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 100.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _vel_y_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 100.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _vel_z_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 100.0f, -FLT_MAX, FLT_MAX);
 
 
 	// States

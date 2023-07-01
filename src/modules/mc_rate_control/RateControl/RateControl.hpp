@@ -43,6 +43,7 @@
 
 #include <lib/mixer/MultirotorMixer/MultirotorMixer.hpp>
 #include <uORB/topics/rate_ctrl_status.h>
+#include <lib/polimi_controllib/PID_controller.h>
 
 class RateControl
 {
@@ -92,7 +93,12 @@ public:
 	 * Set the integral term to 0 to prevent windup
 	 * @see _rate_int
 	 */
-	void resetIntegral() { _rate_int.zero(); }
+	void resetIntegral()
+	{
+		_rate_x_controller.resetIntegral();
+		_rate_y_controller.resetIntegral();
+		_rate_z_controller.resetIntegral();
+	}
 
 	/**
 	 * Get status message of controller for logging/debugging
@@ -104,14 +110,13 @@ private:
 	void updateIntegral(matrix::Vector3f &rate_error, const float dt);
 
 	// Gains
-	matrix::Vector3f _gain_p; ///< rate control proportional gain for all axes x, y, z
-	matrix::Vector3f _gain_i; ///< rate control integral gain
-	matrix::Vector3f _gain_d; ///< rate control derivative gain
 	matrix::Vector3f _lim_int; ///< integrator term maximum absolute value
 	matrix::Vector3f _gain_ff; ///< direct rate to torque feed forward gain only useful for helicopters
 
-	// States
-	matrix::Vector3f _rate_int; ///< integral term of the rate controller
+	// PID controllers
+	PID_controller _rate_x_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 100.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _rate_y_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 100.0f, -FLT_MAX, FLT_MAX);
+	PID_controller _rate_z_controller = PID_controller::PID_academic(0.0f, 0.0f, 0.0f, 100.0f, -FLT_MAX, FLT_MAX);
 
 	// Feedback from control allocation
 	matrix::Vector<bool, 3> _control_allocator_saturation_negative;
