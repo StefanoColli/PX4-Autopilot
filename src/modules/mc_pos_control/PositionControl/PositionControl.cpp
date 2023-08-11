@@ -222,8 +222,6 @@ void PositionControl::_velocityControl(const float dt)
 	/* Acceleration control */
 	_accelerationControl();
 
-	PX4_WARN("acc setpoint = %f %f %f", (double) u_x, (double) u_y, (double) u_z );
-
 	//PX4_WARN("Thrust setpoint = %f", (double) _thr_sp(2));
 	/*
 	// Integrator anti-windup in vertical direction

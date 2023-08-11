@@ -268,6 +268,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_statustext(msg);
 		break;
 
+	case MAVLINK_MSG_ID_CONTROL_TYPE:
+		handle_message_control_type(msg);
+		break;
+
 #if !defined(CONSTRAINED_FLASH)
 
 	case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
@@ -3073,6 +3077,21 @@ MavlinkReceiver::handle_message_gimbal_device_attitude_status(mavlink_message_t 
 	gimbal_attitude_status.received_from_mavlink = true;
 
 	_gimbal_device_attitude_status_pub.publish(gimbal_attitude_status);
+}
+
+void
+MavlinkReceiver::handle_message_control_type(mavlink_message_t *msg)
+{
+	mavlink_control_type_t control_type;
+    	mavlink_msg_control_type_decode(msg, &control_type);
+
+    	struct control_type_s f;
+    	memset(&f, 0, sizeof(f));
+
+    	f.timestamp = hrt_absolute_time();
+    	f.control_type = control_type.control_type;
+
+    	_control_type_pub.publish(f);
 }
 
 void

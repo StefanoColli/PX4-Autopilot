@@ -31,7 +31,7 @@
 #
 ############################################################################
 
-set(MAVLINK_DIALECT "development") # standard, development, etc
+set(MAVLINK_DIALECT "custom_messages") # standard, development, etc
 
 # force mavlink dialect to standard if flash constrained
 if(px4_constrained_flash_build)
