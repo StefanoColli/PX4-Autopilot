@@ -665,6 +665,23 @@ bool MixingOutput::updateStaticMixer()
 		}
 	}
 
+	// check control approach: PID or HOSM with linearization
+	control_type_s control_type_msg;
+	if (_control_type_sub.update(&control_type_msg))
+	{
+		_control_type = control_type_msg.control_type;
+	}
+
+	// get desired propeller speeds from the linearizer
+	propeller_speeds_s propeller_speeds_msg;
+	if (_propeller_speeds_sub.update(&propeller_speeds_msg))
+	{
+		for (size_t i = 0; i < 4; i++)
+		{
+			_propeller_speeds[i] = propeller_speeds_msg.propeller_speed[i];
+		}
+	}
+
 	if (_param_mot_slew_max.get() > FLT_EPSILON) {
 		updateOutputSlewrateMultirotorMixer();
 	}
@@ -711,7 +728,17 @@ bool MixingOutput::updateStaticMixer()
 
 	/* do mixing */
 	float outputs[MAX_ACTUATORS] {};
-	const unsigned mixed_num_outputs = _mixers->mix(outputs, _max_num_outputs);
+	unsigned mixed_num_outputs = 0;
+
+	mixed_num_outputs = _mixers->mix(outputs, _max_num_outputs);
+
+	if (_control_type == 1) // HOSM with linearization -> overwrite the mixer for the main rotors
+	{
+		for (size_t i = 0; i < 4; i++)
+		{
+			outputs[i] = _propeller_speeds[i];
+		}
+	}
 
 	/* the output limit call takes care of out of band errors, NaN and constrains */
 	output_limit_calc(_throttle_armed, mixed_num_outputs, outputs);
@@ -736,6 +763,13 @@ bool MixingOutput::updateStaticMixer()
 
 	/* apply _param_mot_ordering */
 	reorderOutputs(_current_output_value);
+
+	//PX4_WARN("PWM out");
+	//for (size_t i = 0; i < 4; i++)
+	//{
+	//	PX4_WARN("\t motor %d -> %f", (int) i, (double) _current_output_value[i]);
+	//}
+
 
 	/* now return the outputs to the driver */
 	if (_interface.updateOutputs(stop_motors, _current_output_value, mixed_num_outputs, n_updates)) {

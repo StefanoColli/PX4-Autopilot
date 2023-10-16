@@ -52,6 +52,8 @@
 #include <uORB/topics/control_allocator_status.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/test_motor.h>
+#include <uORB/topics/control_type.h>
+#include <uORB/topics/propeller_speeds.h>
 
 using namespace time_literals;
 
@@ -291,6 +293,8 @@ private:
 
 	uORB::Subscription _armed_sub{ORB_ID(actuator_armed)};
 	uORB::SubscriptionCallbackWorkItem _control_subs[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS];
+	uORB::Subscription _control_type_sub{ORB_ID(control_type)};
+	uORB::Subscription _propeller_speeds_sub{ORB_ID(propeller_speeds)};
 
 	uORB::PublicationMulti<actuator_outputs_s> _outputs_pub{ORB_ID(actuator_outputs)};
 	uORB::PublicationMulti<control_allocator_status_s> _control_allocator_status_pub{ORB_ID(control_allocator_status)};
@@ -311,6 +315,9 @@ private:
 
 	const SchedulingPolicy _scheduling_policy;
 	const bool _support_esc_calibration;
+
+	uint8_t _control_type; // 0 = PID, 1 = HOSM with linearization
+	float _propeller_speeds[4] = {0.0, 0.0, 0.0, 0.0}; // angular speed of each propeller computed by the linearizer
 
 	bool _wq_switched{false};
 	uint8_t _driver_instance{0}; ///< for boards that supports multiple outputs (e.g. PX4IO + FMU)

@@ -272,6 +272,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_control_type(msg);
 		break;
 
+	case MAVLINK_MSG_ID_TRAJECTORY_VECTOR:
+		handle_message_trajectory_vector(msg);
+		break;
+
 #if !defined(CONSTRAINED_FLASH)
 
 	case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
@@ -1522,7 +1526,7 @@ void MavlinkReceiver::fill_thrust(float *thrust_body_array, uint8_t vehicle_type
 	case MAV_TYPE_VTOL_TILTROTOR:
 	case MAV_TYPE_VTOL_FIXEDROTOR:
 	case MAV_TYPE_VTOL_TAILSITTER:
-	case MAV_TYPE_VTOL_TILTWING:
+	case MAV_TYPE_VTOL_RESERVED4:
 	case MAV_TYPE_VTOL_RESERVED5:
 		switch (vehicle_type) {
 		case vehicle_status_s::VEHICLE_TYPE_FIXED_WING:
@@ -3092,6 +3096,38 @@ MavlinkReceiver::handle_message_control_type(mavlink_message_t *msg)
     	f.control_type = control_type.control_type;
 
     	_control_type_pub.publish(f);
+}
+
+void
+MavlinkReceiver::handle_message_trajectory_vector(mavlink_message_t *msg)
+{
+	mavlink_trajectory_vector_t trajectory_vector;
+	mavlink_msg_trajectory_vector_decode(msg, &trajectory_vector);
+
+	struct trajectory_vector_s f;
+	memset(&f, 0, sizeof(f));
+
+	f.timestamp = hrt_absolute_time();
+	f.pos_stp[0] = trajectory_vector.x;
+	f.pos_stp[1] = trajectory_vector.y;
+	f.pos_stp[2] = trajectory_vector.z;
+
+	f.vel_stp[0] = trajectory_vector.x_dot;
+	f.vel_stp[1] = trajectory_vector.y_dot;
+	f.vel_stp[2] = trajectory_vector.z_dot;
+
+	f.acc_stp[0] = trajectory_vector.x_2dot;
+	f.acc_stp[1] = trajectory_vector.y_2dot;
+	f.acc_stp[2] = trajectory_vector.z_2dot;
+
+	f.jerk_stp[0] = trajectory_vector.x_3dot;
+	f.jerk_stp[1] = trajectory_vector.y_3dot;
+	f.jerk_stp[2] = trajectory_vector.z_3dot;
+
+	f.psi = trajectory_vector.psi;
+	f.psi_dot = trajectory_vector.psi_dot;
+
+	_trajectory_vector_pub.publish(f);
 }
 
 void

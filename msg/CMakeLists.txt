@@ -104,6 +104,7 @@ set(msg_files
 	landing_target_innovations.msg
 	landing_target_pose.msg
 	led_control.msg
+	linearizer_input.msg
 	log_message.msg
 	logger_status.msg
 	mag_worker_data.msg
@@ -131,6 +132,7 @@ set(msg_files
 	position_setpoint_triplet.msg
 	power_button_state.msg
 	power_monitor.msg
+	propeller_speeds.msg
 	pwm_input.msg
 	px4io_status.msg
 	radio_status.msg
@@ -166,6 +168,7 @@ set(msg_files
 	timesync.msg
 	timesync_status.msg
 	trajectory_bezier.msg
+	trajectory_vector.msg
 	trajectory_waypoint.msg
 	transponder_report.msg
 	tune_control.msg
