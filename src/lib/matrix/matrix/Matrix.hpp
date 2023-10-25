@@ -176,6 +176,20 @@ public:
 		return res;
 	}
 
+	Matrix<Type, M, N> epow(const Matrix<Type, M, N> &other) const
+	{
+		Matrix<Type, M, N> res;
+		const Matrix<Type, M, N> &self = *this;
+
+		for (size_t i = 0; i < M; i++) {
+			for (size_t j = 0; j < N; j++) {
+				res(i, j) = pow<Type,Type>(self(i, j), other(i, j));
+			}
+		}
+
+		return res;
+	}
+
 	Matrix<Type, M, N> edivide(const Matrix<Type, M, N> &other) const
 	{
 		Matrix<Type, M, N> res;
@@ -579,6 +593,29 @@ public:
 
 		return min_val;
 	}
+
+	// 1-norm or maximum column-sum of an M-by-N input matrix A
+	Type l1norm() const
+	{
+		Matrix<Type, M, N> ABS = this->abs();
+		Type max = 0;
+
+		for (size_t i = 0; i < N; i++) // iterate on cols
+		{
+			Type acc = 0;
+			for (size_t j = 0; j < M; j++)
+			{
+				acc += ABS(j,i);
+			}
+
+			if (acc > max)
+			{
+				max = acc;
+			}
+		}
+		return max;
+	}
+
 
 	bool isAllNan() const
 	{
