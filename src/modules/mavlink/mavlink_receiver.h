@@ -110,7 +110,8 @@
 #include <uORB/topics/vehicle_trajectory_bezier.h>
 #include <uORB/topics/vehicle_trajectory_waypoint.h>
 #include <uORB/topics/control_type.h>
-#include <uORB/topics/trajectory_vector.h>
+#include <uORB/topics/states_vector.h>
+#include <uORB/topics/nominal_inputs_vector.h>
 
 #if !defined(CONSTRAINED_FLASH)
 # include <uORB/topics/debug_array.h>
@@ -204,7 +205,8 @@ private:
 	void handle_message_gimbal_device_information(mavlink_message_t *msg);
 	void handle_message_gimbal_device_attitude_status(mavlink_message_t *msg);
 	void handle_message_control_type(mavlink_message_t *msg);
-	void handle_message_trajectory_vector(mavlink_message_t *msg);
+	void handle_message_nominal_states_vector(mavlink_message_t *msg);
+	void handle_message_nominal_inputs_vector(mavlink_message_t *msg);
 
 
 #if !defined(CONSTRAINED_FLASH)
@@ -326,7 +328,8 @@ private:
 	uORB::Publication<vehicle_trajectory_bezier_s>		_trajectory_bezier_pub{ORB_ID(vehicle_trajectory_bezier)};
 	uORB::Publication<vehicle_trajectory_waypoint_s>	_trajectory_waypoint_pub{ORB_ID(vehicle_trajectory_waypoint)};
 	uORB::Publication<control_type_s>			_control_type_pub{ORB_ID(control_type)};
-	uORB::Publication<trajectory_vector_s>			_trajectory_vector_pub{ORB_ID(trajectory_vector)};
+	uORB::Publication<states_vector_s>			_nominal_states_vector_pub{ORB_ID(nominal_states_vector)};
+	uORB::Publication<nominal_inputs_vector_s>		_nominal_inputs_vector_pub{ORB_ID(nominal_inputs_vector)};
 
 #if !defined(CONSTRAINED_FLASH)
 	uORB::Publication<debug_array_s>			_debug_array_pub {ORB_ID(debug_array)};

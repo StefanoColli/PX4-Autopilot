@@ -104,7 +104,6 @@ set(msg_files
 	landing_target_innovations.msg
 	landing_target_pose.msg
 	led_control.msg
-	linearizer_input.msg
 	log_message.msg
 	logger_status.msg
 	mag_worker_data.msg
@@ -117,6 +116,7 @@ set(msg_files
 	mission_result.msg
 	mount_orientation.msg
 	navigator_mission_item.msg
+	nominal_inputs_vector.msg
 	npfg_status.msg
 	obstacle_distance.msg
 	offboard_control_mode.msg
@@ -159,6 +159,7 @@ set(msg_files
 	sensor_selection.msg
 	sensors_status_imu.msg
 	sensors_status.msg
+	states_vector.msg
 	system_power.msg
 	takeoff_status.msg
 	task_stack_info.msg
@@ -168,7 +169,6 @@ set(msg_files
 	timesync.msg
 	timesync_status.msg
 	trajectory_bezier.msg
-	trajectory_vector.msg
 	trajectory_waypoint.msg
 	transponder_report.msg
 	tune_control.msg

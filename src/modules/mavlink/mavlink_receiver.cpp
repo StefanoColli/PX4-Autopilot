@@ -272,8 +272,12 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_control_type(msg);
 		break;
 
-	case MAVLINK_MSG_ID_TRAJECTORY_VECTOR:
-		handle_message_trajectory_vector(msg);
+	case MAVLINK_MSG_ID_NOMINAL_STATES_VECTOR:
+		handle_message_nominal_states_vector(msg);
+		break;
+
+	case MAVLINK_MSG_ID_NOMINAL_INPUTS_VECTOR:
+		handle_message_nominal_inputs_vector(msg);
 		break;
 
 #if !defined(CONSTRAINED_FLASH)
@@ -3099,35 +3103,50 @@ MavlinkReceiver::handle_message_control_type(mavlink_message_t *msg)
 }
 
 void
-MavlinkReceiver::handle_message_trajectory_vector(mavlink_message_t *msg)
+MavlinkReceiver::handle_message_nominal_states_vector(mavlink_message_t *msg)
 {
-	mavlink_trajectory_vector_t trajectory_vector;
-	mavlink_msg_trajectory_vector_decode(msg, &trajectory_vector);
+	mavlink_nominal_states_vector_t nominal_states_vector;
+	mavlink_msg_nominal_states_vector_decode(msg, &nominal_states_vector);
 
-	struct trajectory_vector_s f;
+	struct states_vector_s f;
 	memset(&f, 0, sizeof(f));
 
 	f.timestamp = hrt_absolute_time();
-	f.pos_stp[0] = trajectory_vector.x;
-	f.pos_stp[1] = trajectory_vector.y;
-	f.pos_stp[2] = trajectory_vector.z;
+	f.pos_stp[0] = nominal_states_vector.x;
+	f.pos_stp[1] = nominal_states_vector.y;
+	f.pos_stp[2] = nominal_states_vector.z;
 
-	f.vel_stp[0] = trajectory_vector.x_dot;
-	f.vel_stp[1] = trajectory_vector.y_dot;
-	f.vel_stp[2] = trajectory_vector.z_dot;
+	f.vel_stp[0] = nominal_states_vector.x_dot;
+	f.vel_stp[1] = nominal_states_vector.y_dot;
+	f.vel_stp[2] = nominal_states_vector.z_dot;
 
-	f.acc_stp[0] = trajectory_vector.x_2dot;
-	f.acc_stp[1] = trajectory_vector.y_2dot;
-	f.acc_stp[2] = trajectory_vector.z_2dot;
+	f.acc_stp[0] = nominal_states_vector.x_2dot;
+	f.acc_stp[1] = nominal_states_vector.y_2dot;
+	f.acc_stp[2] = nominal_states_vector.z_2dot;
 
-	f.jerk_stp[0] = trajectory_vector.x_3dot;
-	f.jerk_stp[1] = trajectory_vector.y_3dot;
-	f.jerk_stp[2] = trajectory_vector.z_3dot;
+	f.jerk_stp[0] = nominal_states_vector.x_3dot;
+	f.jerk_stp[1] = nominal_states_vector.y_3dot;
+	f.jerk_stp[2] = nominal_states_vector.z_3dot;
 
-	f.psi = trajectory_vector.psi;
-	f.psi_dot = trajectory_vector.psi_dot;
+	f.psi = nominal_states_vector.psi;
+	f.psi_dot = nominal_states_vector.psi_dot;
 
-	_trajectory_vector_pub.publish(f);
+	_nominal_states_vector_pub.publish(f);
+}
+
+void
+MavlinkReceiver::handle_message_nominal_inputs_vector(mavlink_message_t *msg)
+{
+	mavlink_nominal_inputs_vector_t nominal_inputs_vector;
+	mavlink_msg_nominal_inputs_vector_decode(msg, &nominal_inputs_vector);
+
+	struct nominal_inputs_vector_s f;
+	memset(&f, 0, sizeof(f));
+
+	f.timestamp = hrt_absolute_time();
+	memcpy(f.values, nominal_inputs_vector.nominal_inputs_vector, sizeof(nominal_inputs_vector.nominal_inputs_vector));
+
+	_nominal_inputs_vector_pub.publish(f);
 }
 
 void
