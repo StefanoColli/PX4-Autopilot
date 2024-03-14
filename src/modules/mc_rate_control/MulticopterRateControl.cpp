@@ -119,6 +119,13 @@ MulticopterRateControl::Run()
 		parameters_updated();
 	}
 
+	// check control approach: PID or HOSM with linearization
+	control_type_s control_type_msg;
+	if (_control_type_sub.update(&control_type_msg))
+	{
+		_control_type = control_type_msg.control_type;
+	}
+
 	/* run controller on gyro changes */
 	vehicle_angular_velocity_s angular_velocity;
 
@@ -279,7 +286,10 @@ MulticopterRateControl::Run()
 			}
 
 			actuators.timestamp = hrt_absolute_time();
-			_actuators_0_pub.publish(actuators);
+			if (_control_type == 0) //PID
+			{
+				_actuators_0_pub.publish(actuators);
+			}
 
 			updateActuatorControlsStatus(actuators, dt);
 

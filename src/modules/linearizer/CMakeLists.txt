@@ -40,4 +40,5 @@ px4_add_module(
 		Linearizer.hpp
 	DEPENDS
 		px4_work_queue
+		differentiator
 	)

@@ -1,5 +1,6 @@
 menuconfig MODULES_LINEARIZER
 	bool "linearizer"
+	depends on MODULES_JERK_ESTIMATOR
 	default n
 	---help---
 		Enable support for quadcopter linearizer

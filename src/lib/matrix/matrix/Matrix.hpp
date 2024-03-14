@@ -183,7 +183,7 @@ public:
 
 		for (size_t i = 0; i < M; i++) {
 			for (size_t j = 0; j < N; j++) {
-				res(i, j) = pow<Type,Type>(self(i, j), other(i, j));
+				res(i, j) = pow(self(i, j), other(i, j));
 			}
 		}
 

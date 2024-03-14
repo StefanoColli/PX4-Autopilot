@@ -11,7 +11,6 @@
 #pragma once
 
 #include "math.hpp"
-#include <iostream>
 
 namespace matrix
 {

@@ -35,7 +35,7 @@
 
 Linearizer::Linearizer() :
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers)
+	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::test2)
 {
 }
 
@@ -47,7 +47,7 @@ Linearizer::~Linearizer()
 
 bool Linearizer::init()
 {
-	ScheduleOnInterval(5000_us); // run every 5000 us interval -> 200 Hz rate
+	ScheduleOnInterval(4000_us); // run every 4000 us interval -> @250Hz rate
 
 	// set integrators initial states
 	_u1_2dot_int_state = 0;
@@ -58,133 +58,155 @@ bool Linearizer::init()
 
 void Linearizer::update_state()
 {
-	// update input vector v
-	if (_input_vector_sub.updated())
+	// check control approach: PID or HOSM with linearization or PP with linearization
+	control_type_s control_type_msg;
+	if (_control_type_sub.update(&control_type_msg))
 	{
-		linearizer_input_s input_vector_msg;
+		_control_type = control_type_msg.control_type;
+	}
 
-		if (_input_vector_sub.copy(&input_vector_msg))
+	// update nominal input vector (HOSM controller input)
+	// NED -> ENU conversion
+	if (_nominal_inputs_vector_sub.updated())
+	{
+		nominal_inputs_vector_s nominal_inputs_vector_msg;
+
+		if (_nominal_inputs_vector_sub.copy(&nominal_inputs_vector_msg))
 		{
-			_input_vector[0] = input_vector_msg.values[0];
-			_input_vector[1] = input_vector_msg.values[1];
-			_input_vector[2] = input_vector_msg.values[2];
-			_input_vector[3] = input_vector_msg.values[3];
+			_nominal_inputs[0] = nominal_inputs_vector_msg.values[1];
+			_nominal_inputs[1] = nominal_inputs_vector_msg.values[0];
+			_nominal_inputs[2] =- nominal_inputs_vector_msg.values[2];
+			_nominal_inputs[3] = nominal_inputs_vector_msg.values[3];
 		}
 	}
 
-	// update state vector z
-	if (_feed_type == FF)	//Feedforward linearization -> state vector z from trajectory generator
+	// update nominal state vector (data coming from the trajectory generator)
+	// NED -> ENU conversion
+	if (_nominal_states_sub.updated())
 	{
-		if (_trajectory_vector_sub.updated())
+		states_vector_s nominal_states_msg;
+
+		if (_nominal_states_sub.copy(&nominal_states_msg))
 		{
-			trajectory_vector_s traj_vector;
+			_nominal_states_vector[0] = nominal_states_msg.pos_stp[1];
+			_nominal_states_vector[1] = nominal_states_msg.vel_stp[1];
+			_nominal_states_vector[2] = nominal_states_msg.acc_stp[1];
+			_nominal_states_vector[3] = nominal_states_msg.jerk_stp[1];
 
-			if (_trajectory_vector_sub.copy(&traj_vector))
-			{
-				_pos(0) = traj_vector.pos_stp[0];
-				_pos(1) = traj_vector.pos_stp[1];
-				_pos(2) = traj_vector.pos_stp[2];
+			_nominal_states_vector[4] = nominal_states_msg.pos_stp[0];
+			_nominal_states_vector[5] = nominal_states_msg.vel_stp[0];
+			_nominal_states_vector[6] = nominal_states_msg.acc_stp[0];
+			_nominal_states_vector[7] = nominal_states_msg.jerk_stp[0];
 
-				_vel(0) = traj_vector.vel_stp[0];
-				_vel(1) = traj_vector.vel_stp[1];
-				_vel(2) = traj_vector.vel_stp[2];
+			_nominal_states_vector[8] = - nominal_states_msg.pos_stp[2];
+			_nominal_states_vector[9] = - nominal_states_msg.vel_stp[2];
+			_nominal_states_vector[10] = - nominal_states_msg.acc_stp[2];
+			_nominal_states_vector[11] = - nominal_states_msg.jerk_stp[2];
 
-				_acc(0) = traj_vector.acc_stp[0];
-				_acc(1) = traj_vector.acc_stp[1];
-				_acc(2) = traj_vector.acc_stp[2];
-
-				_jerk(0) = traj_vector.jerk_stp[0];
-				_jerk(1) = traj_vector.jerk_stp[1];
-				_jerk(2) = traj_vector.jerk_stp[2];
-
-				_yaw = traj_vector.psi;
-				_yaw_rate = traj_vector.psi_dot;
-			}
+			_nominal_states_vector[12] = -nominal_states_msg.psi + M_PI_2_F;
+			_nominal_states_vector[13] = -nominal_states_msg.psi_dot;
 		}
-
 	}
-	else	//Feedback linearization -> state vector z from quadcopter sensors
+
+	// update measured state vector (data coming from the jerk estimator so it is already in NED frame)
+	if (_measured_states_sub.updated())
 	{
-		// update position and velocity
-		if (_local_pos_sub.updated())
+		states_vector_s measured_states_msg;
+
+		if (_measured_states_sub.copy(&measured_states_msg))
 		{
-			vehicle_local_position_s local_pos;
+			_measured_states_vector[0] = measured_states_msg.pos_stp[0];
+			_measured_states_vector[1] = measured_states_msg.vel_stp[0];
+			_measured_states_vector[2] = measured_states_msg.acc_stp[0];
+			_measured_states_vector[3] = measured_states_msg.jerk_stp[0];
 
-			if (_local_pos_sub.copy(&local_pos))
-			{
-				_pos(0) = local_pos.x;
-				_pos(1) = local_pos.y;
-				_pos(2) = local_pos.z;
+			_measured_states_vector[4] = measured_states_msg.pos_stp[1];
+			_measured_states_vector[5] = measured_states_msg.vel_stp[1];
+			_measured_states_vector[6] = measured_states_msg.acc_stp[1];
+			_measured_states_vector[7] = measured_states_msg.jerk_stp[1];
 
-				_vel(0) = local_pos.vx;
-				_vel(1) = local_pos.vy;
-				_vel(2) = local_pos.vz;
+			_measured_states_vector[8] = measured_states_msg.pos_stp[2];
+			_measured_states_vector[9] = measured_states_msg.vel_stp[2];
+			_measured_states_vector[10] = measured_states_msg.acc_stp[2];
+			_measured_states_vector[11] = measured_states_msg.jerk_stp[2];
 
-				// TODO this or use accelerometer data?
-				//_acc(0) = local_pos.ax;
-				//_acc(1) = local_pos.ay;
-				//_acc(2) = local_pos.az;
-			}
-		}
-		// update acceleration from accelerometer data
-		if (_sensor_accel_sub.updated())
-		{
-			sensor_accel_s accel;
-
-			if (_sensor_accel_sub.copy(&accel))
-			{
-				_acc(0) = accel.x;
-				_acc(1) = accel.y;
-				_acc(2) = accel.z;
-			}
-		}
-		// update jerk //TODO use differentiator
-		_jerk(0) = 0.001;
-		_jerk(1) = 0.001;
-		_jerk(2) = 0.001;
-		// update yaw
-		if (_vehicle_attitude_sub.updated())
-		{
-			vehicle_attitude_s attitude;
-
-			if (_vehicle_attitude_sub.copy(&attitude))
-			{
-				matrix::Quatf quat = matrix::Quatf(attitude.q);
-				double num = 2 * (quat(3) * quat(2) + quat(0) * quat(1));
-    				double den = 1 - 2 * (quat(1) * quat(1) + quat(2) * quat(2));
-    				_yaw = std::atan2(num, den);
-			}
-		}
-
-		//update yaw rate
-		if (_angular_vel_sub.updated())
-		{
-			vehicle_angular_velocity_s angular_velocity;
-
-			if (_angular_vel_sub.copy(&angular_velocity))
-			{
-				_yaw_rate = angular_velocity.xyz[2];
-			}
+			_measured_states_vector[12] = measured_states_msg.psi;
+			_measured_states_vector[13] = measured_states_msg.psi_dot;
 		}
 	}
 }
 
-float Linearizer::compute_u1(float z[14], float v[4])
+void Linearizer::HOSM_control(const float nominal_states_vector[14], const float measured_states_vector[14],
+				const float v_ref[4], float v_out[4])
+{
+	float v_SM[4];
+	for (size_t i = 0; i < 3; i++)
+	{
+		float si = measured_states_vector[4*i] - nominal_states_vector[4*i];
+		float si_dot = measured_states_vector[4*i+1] - nominal_states_vector[4*i+1];
+		float si_2dot = measured_states_vector[4*i+2] - nominal_states_vector[4*i+2];
+		float si_3dot = measured_states_vector[4*i+3] - nominal_states_vector[4*i+3];
+
+		v_SM[i] = - _gamma[i] * signf(si_3dot + 3 * powf(powf(si_2dot, 6) + powf(si_dot, 4) + powf(abs(si),3), 1/12.f) *
+					signf(si_2dot + powf(powf(si_dot, 4) + powf(abs(si),3), 1/6.f)) *
+					signf(si_dot + 1/2.f * powf(abs(si),3/4.f) * signf(si)));
+
+	}
+
+	float s4 = measured_states_vector[12] - nominal_states_vector[12];
+	float s4_dot = measured_states_vector[13] - nominal_states_vector[13];
+	v_SM[3] = - _gamma[3] * signf(s4_dot + powf(abs(s4), 1/2.f) * signf(s4));
+
+	// control law
+	for (size_t i = 0; i < 4; i++)
+	{
+		v_out[i] = v_ref[i] + v_SM[i];
+	}
+	//PX4_WARN("HOSM output: [%f, %f, %f, %f]", (double) v_out[0], (double) v_out[1], (double) v_out[2], (double) v_out[3]);
+
+}
+
+void Linearizer::PP_control(const float nominal_states_vector[14], const float measured_states_vector[14], const float k_1[4],
+				const float k_2[2], float v_out[4])
+{
+
+	matrix::Vector<float,4> k1 = matrix::Vector<float,4>(k_1);
+	matrix::Vector<float,2> k2 = matrix::Vector<float,2>(k_2);
+
+	// for the 3 coordinates x,y and z we have 3 fourth-order state spaces
+	for (int i = 0; i < 3; i++)
+	{
+		float diff_data[4] = {measured_states_vector[i*4] - nominal_states_vector[i*4],
+				      measured_states_vector[i*4+1] - nominal_states_vector[i*4+1],
+				      measured_states_vector[i*4+2] - nominal_states_vector[i*4+2],
+				      measured_states_vector[i*4+3] - nominal_states_vector[i*4+3]};
+		matrix::Vector<float,4> diff = matrix::Vector<float,4>(diff_data);
+		v_out[i] = k1.dot(diff);
+	}
+
+	// for the psi we have one second-order state space
+
+	float diff_data[2] = {measured_states_vector[12] - nominal_states_vector[12],
+			      measured_states_vector[13] - nominal_states_vector[13]};
+	matrix::Vector<float,2> diff = matrix::Vector<float,2>(diff_data);
+	v_out[3] = k2.dot(diff);
+}
+
+float Linearizer::compute_u1(const float z[14], const float v[4])
 {
 	// intemediate vectors
 	matrix::Vector3f alpha = {z[2], z[6], z[10] + CONSTANT_G};
 	matrix::Vector3f beta = {z[3], z[7], z[11]};
-	matrix::Vector3f gamma = {v[0], v[1], -v[2]}; // - for NED frame
+	matrix::Vector3f gamma = {v[0], v[1], v[2]};
 
-	float u1_2dot = _mass/alpha.norm() * (alpha.dot(gamma) + beta.norm_squared() -
-		   		powf(alpha.dot(beta) / alpha.norm(), 2));
-
+	// TODO handle alfa.norm() == 0
+	float u1_2dot = _mass/alpha.norm() * (alpha.dot(gamma) + beta.norm_squared() -powf(alpha.dot(beta) / alpha.norm(), 2));
 	//double integration to get u1
 	float u1_dot = discrete_integration(u1_2dot, _u1_2dot_int_state, 1.0f);
 	return discrete_integration(u1_dot, _u1_dot_int_state, 1.0f);
 }
 
-matrix::Vector3f Linearizer::compute_u2(float z[14], float v[4], float u1)
+matrix::Vector3f Linearizer::compute_u2( const float z[14], const float v[4], float u1)
 {
 	// intermediate vectors
 	matrix::Vector3f alpha = {z[2], z[6], z[10] + CONSTANT_G};
@@ -226,7 +248,7 @@ matrix::Vector3f Linearizer::compute_u2(float z[14], float v[4], float u1)
 	float dtheta = q - sin(phi)*dpsi;
 
 	// Rotational accelerations in body frame (dp, dq)
-	matrix::Vector3f v_sliced = {v[0], v[1], -v[2]}; //- for NED frame
+	matrix::Vector3f v_sliced = {v[0], v[1], v[2]};
 	float dp = -_mass/u1 * (R_BW_y.dot(v_sliced) + 2*p*alpha.dot(beta)/alpha.norm()) + r*q;
 	float dq =  _mass/u1 * (R_BW_x.dot(v_sliced) - 2*q*alpha.dot(beta)/alpha.norm()) - r*p;
 
@@ -258,7 +280,6 @@ matrix::Vector3f Linearizer::compute_u2(float z[14], float v[4], float u1)
 float Linearizer::discrete_integration(float input, float& state, float gain)
 {
 	// Integration using backward Euler method
-
 	// Compute output
 	float output = state + gain * _Ts * input;
 	// Update state
@@ -267,24 +288,26 @@ float Linearizer::discrete_integration(float input, float& state, float gain)
 	return output;
 }
 
-void Linearizer::linearize()
+matrix::Vector<float, 4> Linearizer::linearize(const float input_vector[4])
 {
-	float z[14] = {_pos(0), _vel(0), _acc(0), _jerk(0),
-		       _pos(1), _vel(1), _acc(1), _jerk(1),
-		       _pos(2), _vel(2), _acc(2), _jerk(2),
-		       _yaw, _yaw_rate};
+	// feedforward linearization -> z is the nominal state vectors
+	// feedback linearization -> z is the measured state vectors
+	float *z = _feed_type== FF ? _nominal_states_vector : _measured_states_vector;
 
 	// compute thrust (u1) and roll, pitch and yaw moments (u2.xyz)
-	float u1 = compute_u1(z, _input_vector);
-	matrix::Vector3f u2 = compute_u2(z, _input_vector, u1);
+	float u1 = compute_u1(z, input_vector);
+	matrix::Vector3f u2 = compute_u2(z, input_vector, u1);
 
-	//PX4_WARN("u1 = %f, u2 = %f, u3 = %f, u4 = %f", (double) u1, (double) u2(0), (double) u2(1), (double) u2(2));
-
-	// U -> OMEGA: OMEGA^2 = _thrust_to_speed * U
-	matrix::Vector<float, 4> U, W;
+	matrix::Vector<float, 4> U;
 	U(0) = u1;
 	U.slice<3,1>(1,0) = u2;
+	return U;
+}
 
+void Linearizer::mix_and_publish(matrix::Vector<float, 4>& U)
+{
+	// U <-> OMEGA relation: OMEGA^2 = _thrust_to_speed * U
+	matrix::Vector<float, 4> W;
 	W = _thrust_to_speed * U; // apply equations described in the header to obtain the square of each propeller speed
 	W = W.sqrt();
 
@@ -292,21 +315,33 @@ void Linearizer::linearize()
 	propeller_speeds_s prop_speeds_msg;
 	for (size_t i = 0; i < 4; i++)
 	{
-		//PX4_WARN("Desired propeller %d speed = %f", (int) i+1, (double) W(i));
+		if (W(i) < _min_propeller_speed || W(i) > _max_propeller_speed)
+		{
+			PX4_WARN("Requested speed %f for propeller %zu exceeds range [%g,%g]",
+					(double) W(i), i, (double) _min_propeller_speed, (double) _max_propeller_speed );
+		}
 
-		// remap propeller speeds from [0; max_speed] to [-1; 1]
-		float midpoint = (_max_propeller_speed - _min_propeller_speed) / 2;
-		W(i) = math::constrain( (W(i) - midpoint) / midpoint, -1.f, 1.f);
+		//map from rad/s to normalized PWM (in [0;1] range), where rads = PWMnorm*1200 + 100
+		W(i) = (W(i) - 100)/1200; //TODO correct with _min_propeller_speed and _max_propeller_speed
 
-		//PX4_WARN("Converted propeller %d speed = %f", (int) i, (double) W(i));
+		// from [0;1] to [-1;1]
+		W(i) = math::constrain((2.f * W(i) - 1.f), -1.f, 1.f);
 
-		prop_speeds_msg.propeller_speed[i] = PX4_ISFINITE(W(i))? W(i) : -1.f;
+		if (isnan(W(i)))
+		{
+			W(i) = -1;
+		}
+
+		prop_speeds_msg.propeller_speed[i] = W(i);
 	}
 	prop_speeds_msg.timestamp = hrt_absolute_time();
-
 	_propeller_speeds_pub.publish(prop_speeds_msg);
-}
 
+	// publish empty actuator controls message to maintain the lockstep synch
+	actuator_controls_s actuators{};
+	actuators.timestamp = hrt_absolute_time();
+	_actuators_pub.publish(actuators);
+}
 
 void Linearizer::Run()
 {
@@ -319,18 +354,30 @@ void Linearizer::Run()
 	perf_begin(_loop_perf);
 	perf_count(_loop_interval_perf);
 
-	// Check if parameters have changed
-	if (_parameter_update_sub.updated()) {
-		// clear update
-		parameter_update_s param_update;
-		_parameter_update_sub.copy(&param_update);
-		updateParams(); // update module parameters (in DEFINE_PARAMETERS)
+	update_state();
+
+	if (_control_type != 0)
+	{
+		float v_out[4] = {0.f};
+
+		// compute control action
+		if (_control_type == 1) //HOSM
+		{
+			HOSM_control(_nominal_states_vector, _measured_states_vector, _nominal_inputs, v_out);
+		}
+		else if (_control_type == 2) //PP
+		{
+			PP_control(_nominal_states_vector, _measured_states_vector, _k1, _k2, v_out);
+		}
+
+		// apply control action to the linearized quadrotor model
+		matrix::Vector<float, 4> U = linearize(v_out);
+
+		mix_and_publish(U);
 	}
 
-	update_state();
-	linearize();
-
 	perf_end(_loop_perf);
+
 }
 
 int Linearizer::task_spawn(int argc, char *argv[])

@@ -63,6 +63,7 @@
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_thrust_setpoint.h>
 #include <uORB/topics/vehicle_torque_setpoint.h>
+#include <uORB/topics/control_type.h>
 
 using namespace time_literals;
 
@@ -107,6 +108,7 @@ private:
 	uORB::Subscription _vehicle_angular_acceleration_sub{ORB_ID(vehicle_angular_acceleration)};
 	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
+	uORB::Subscription _control_type_sub{ORB_ID(control_type)};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
@@ -129,6 +131,8 @@ private:
 	bool _maybe_landed{true};
 
 	float _battery_status_scale{0.0f};
+
+	uint8_t _control_type; // 0 = PID, 1 = HOSM with linearization, 2 = PP with linearization
 
 	perf_counter_t	_loop_perf;			/**< loop duration performance counter */
 

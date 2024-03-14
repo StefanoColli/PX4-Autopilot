@@ -82,3 +82,13 @@ mc_pos_control start
 # Start Multicopter Land Detector.
 #
 land_detector start multicopter
+
+#
+# Start Jerk estimator module.
+#
+jerk_estimator start
+
+#
+# Start linearizer module.
+#
+linearizer start

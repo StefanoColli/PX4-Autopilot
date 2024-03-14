@@ -1,0 +1,5 @@
+menuconfig MODULES_JERK_ESTIMATOR
+	bool "jerk_estimator"
+	default n
+	---help---
+		Enable support for jerk estimator which creates the input vector for the quadricopter linearizer
