@@ -209,7 +209,7 @@ private:
 	float _u1_2dot_int_state; 	// integrator state (u1_2dot -> u1_dot)
 	float _u1_dot_int_state;	// integrator state (u1_dot -> u1)
 
-	const float _mass = 1.5f;	 	// gazebo solo model mass
+	const float _mass = 1.52f;	 	// gazebo solo model mass
 	const float inertia_data[9] = {0.015,    0,       0,
 				   	0,     0.015,     0,
 				   	0,       0,     0.021};

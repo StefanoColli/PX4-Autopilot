@@ -1,10 +1,5 @@
 #include "Differentiator.hpp"
 
-#include <iostream>
-#include <stdexcept>
-#include <algorithm>
-#include <boost/math/special_functions/factorials.hpp>
-
 Differentiator::Differentiator(double r, double Ts) :
     Differentiator(-1.0, r, 1, 0.0, Ts)
 {
@@ -67,7 +62,7 @@ Differentiator::Differentiator(double d, double r, unsigned int m, double mu, do
 
     matrix::SquareMatrix<double,_sys_n> fact_diag = matrix::zeros<double, _sys_n, _sys_n>();
     for (unsigned int k=0; k<_sys_n; k++) {
-        fact_diag(k,k) = 1/boost::math::factorial<double>(k);
+        fact_diag(k,k) = 1/tgamma(k+1);
     }
 
     matrix::Vector<double, _sys_n> ones_sys_n = matrix::ones<double, _sys_n, 1>();
@@ -154,7 +149,7 @@ double Differentiator::disc_eigenvalues(double s)
 {
     switch (_m) {
         case 0:
-            if (std::isinf(s)) {
+            if (PX4_ISFINITE(s)) {
                 return 0.0;
             }
             else {

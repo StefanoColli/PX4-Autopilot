@@ -76,7 +76,7 @@ void Linearizer::update_state()
 			_nominal_inputs[0] = nominal_inputs_vector_msg.values[1];
 			_nominal_inputs[1] = nominal_inputs_vector_msg.values[0];
 			_nominal_inputs[2] =- nominal_inputs_vector_msg.values[2];
-			_nominal_inputs[3] = nominal_inputs_vector_msg.values[3];
+			_nominal_inputs[3] =- nominal_inputs_vector_msg.values[3];
 		}
 	}
 
@@ -213,21 +213,21 @@ matrix::Vector3f Linearizer::compute_u2( const float z[14], const float v[4], fl
 	matrix::Vector3f beta = {z[3], z[7], z[11]};
 
 	// angles in world frame
-	float eta   = sqrt(powf(alpha(2), 2) + powf((sin(z[12])*z[2] - cos(z[12])*z[6]), 2));
+	float eta   = sqrt(powf(alpha(2), 2) + powf((sinf(z[12])*z[2] - cosf(z[12])*z[6]), 2));
 	float psi   = z[12];
-	float phi   = atan2(sin(psi)*z[2] - cos(psi)*z[6], alpha(2));
-	float theta = atan2(cos(psi)*z[2] + sin(psi)*z[6], eta);
+	float phi   = atan2(sinf(psi)*z[2] - cosf(psi)*z[6], alpha(2));
+	float theta = atan2(cosf(psi)*z[2] + sinf(psi)*z[6], eta);
 
 	// body to World rotation matrix
-	matrix::Vector3f R_BW_x = { cos(psi)*cos(theta)-sin(psi)*sin(phi)*sin(theta),
-           		 	    sin(psi)*cos(theta)+cos(psi)*sin(phi)*sin(theta),
-                                    -cos(phi)*sin(theta) };
-	matrix::Vector3f R_BW_y = { -sin(psi)*cos(phi),
-            		 	    cos(psi)*cos(phi),
-                     	 	    sin(phi) };
-	matrix::Vector3f R_BW_z = { cos(psi)*sin(theta)+sin(psi)*sin(phi)*cos(theta),
-           		 	    sin(psi)*sin(theta)-cos(psi)*sin(phi)*cos(theta),
-                         	    cos(phi)*cos(theta) };
+	matrix::Vector3f R_BW_x = { cosf(psi)*cosf(theta)-sinf(psi)*sinf(phi)*sinf(theta),
+           		 	    sinf(psi)*cosf(theta)+cosf(psi)*sinf(phi)*sinf(theta),
+                                    -cosf(phi)*sinf(theta) };
+	matrix::Vector3f R_BW_y = { -sinf(psi)*cosf(phi),
+            		 	    cosf(psi)*cosf(phi),
+                     	 	    sinf(phi) };
+	matrix::Vector3f R_BW_z = { cosf(psi)*sinf(theta)+sinf(psi)*sinf(phi)*cosf(theta),
+           		 	    sinf(psi)*sinf(theta)-cosf(psi)*sinf(phi)*cosf(theta),
+                         	    cosf(phi)*cosf(theta) };
 
 	float M_rot_data[9] = { R_BW_x(0), R_BW_y(0), R_BW_z(0),
 			  	R_BW_x(1), R_BW_y(1), R_BW_z(1),
@@ -238,14 +238,14 @@ matrix::Vector3f Linearizer::compute_u2( const float z[14], const float v[4], fl
 	// rotational velocities in body frame
 	float p = -_mass/u1 * R_BW_y.dot(beta);
 	float q =  _mass/u1 * R_BW_x.dot(beta);
-	float r = tan(theta) * (p + cos(phi)*sin(theta)*z[13]) + cos(phi)*cos(theta)*z[13];
+	float r = tanf(theta) * (p + cosf(phi)*sinf(theta)*z[13]) + cosf(phi)*cosf(theta)*z[13];
 
 	matrix::Vector3f pqr(p, q, r);
 
 	// rotational velocities in world frame
 	float dpsi   = z[13];
-	float dphi   = (p + cos(phi)*sin(theta)*dpsi)/cos(theta);
-	float dtheta = q - sin(phi)*dpsi;
+	float dphi   = (p + cosf(phi)*sinf(theta)*dpsi)/cosf(theta);
+	float dtheta = q - sinf(phi)*dpsi;
 
 	// Rotational accelerations in body frame (dp, dq)
 	matrix::Vector3f v_sliced = {v[0], v[1], v[2]};
@@ -253,13 +253,13 @@ matrix::Vector3f Linearizer::compute_u2( const float z[14], const float v[4], fl
 	float dq =  _mass/u1 * (R_BW_x.dot(v_sliced) - 2*q*alpha.dot(beta)/alpha.norm()) - r*p;
 
 	// Rotational accelerations in world frame
-	float M_rot_acc_data[9] = {cos(psi), R_BW_y(0), 0,
-				   sin(psi), R_BW_y(1), 0,
+	float M_rot_acc_data[9] = {cosf(psi), R_BW_y(0), 0,
+				   sinf(psi), R_BW_y(1), 0,
 				      0,     R_BW_y(2), 1};
 	matrix::Matrix3f M_rot_acc{M_rot_acc_data};
 	matrix::Matrix3f As = M_rot.transpose() * M_rot_acc;
 
-	matrix::Vector3f vect_a(-sin(psi)*dpsi, cos(psi)*dpsi, 0);
+	matrix::Vector3f vect_a(-sinf(psi)*dpsi, cosf(psi)*dpsi, 0);
 	matrix::Vector3f vect_b(-r, 0, p);
 
 	matrix::Vector3f Bs = M_rot.transpose() * vect_a * dphi + vect_b*dtheta;
